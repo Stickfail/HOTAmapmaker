@@ -24,6 +24,18 @@
     .d1 {
       background-color: black;
     }
+
+    .d2 {
+      background-color: red;
+    }
+
+    .d3 {
+      background-color: green;
+    }
+
+    .d4 {
+      background-color: blue;
+    }
   </style>
 </head>
 
@@ -31,76 +43,81 @@
 
   <h1>HOTA Map Editor</h1>
 
-  <button type="button" onclick="resize()">resize</button>
+  <button type="button" onclick="resize()">Resize</button>
+  <button type="button" onclick="setTileId()">Set Tile ID</button>
 
-  <div class="grid-container" id="grid">
-    <div class="item1">1</div>
-    <div class="item2">2</div>
-    <div class="item3">3</div>
-    <div class="item4">4</div>
-    <div class="item5">5</div>
-    <div class="item6">6</div>
-  </div>
+  <div class="grid-container" id="grid"></div>
 
   <button type="button" onclick="finish()">Finish</button>
-  
-  <p id="printid"></p>
-  <script>
-    const grid = document.getElementById("grid")
 
-    function change(id) {
-      e = document.getElementById(id)
-      if (e.className == "one") {
-        e.className = "zero"
-      } else {
-        e.className = "one"
-      }
+  <p id="printid"></p>
+
+  <script>
+    const grid = document.getElementById("grid");
+    let isDragging = false; // Track if the mouse is being dragged
+
+     let currentTileId = "d0"; // Default class to start with
+
+    // Function to change the tile's class (and color)
+    function changeTileClass(tile) {
+      tile.className = `tiles ${currentTileId}`; // Set tile to the current tile ID
     }
 
     function finish() {
-      var final = []
-      
-      for (let h = 0; h < y; h++) {
-      	let temp = []
-        for (let w = 0; w < x; w++) {
-        	j=document.getElementById(`${w}w${h}h`)
-        
-        	let title = 0
-            
-			temp.push(j.className)
-        }
-        final.push(`[${temp}]`)
+      let final = [];
 
+      for (let h = 0; h < y; h++) {
+        let temp = [];
+        for (let w = 0; w < x; w++) {
+          let tile = document.getElementById(`${w}w${h}h`);
+          temp.push(tile.className);
+        }
+        final.push(`[${temp}]`);
       }
-      final = `[${final}]`
-      document.getElementById("printid").innerText = final
+
+      final = `[${final}]`;
+      document.getElementById("printid").innerText = final;
     }
 
-	var x
-    var y
-    function resize() {
-      x = prompt("Set x value")
-      y = prompt("Set y value")
+    let x, y;
 
-      grid.innerHTML = ""
+    // Handle clicking to change tile class
+    function handleClick(e) {
+      if (e.target.classList.contains("tiles")) {
+        changeTileClass(e.target); // Change clicked tile to the selected class
+      }
+    }
+
+    // Function to set the current tile ID (class) for future clicks
+    function setTileId() {
+      let tileId = prompt("Enter tile ID (e.g., 'd0', 'd1', 'd2', 'd3'):");
+
+      if (tileId) {
+        currentTileId = tileId; // Set the current tile ID
+      } else {
+        alert("Invalid tile ID entered.");
+      }
+    }
+
+    function resize() {
+      x = prompt("Set x value");
+      y = prompt("Set y value");
+
+      grid.innerHTML = "";
       for (let h = 0; h < y; h++) {
         for (let w = 0; w < x; w++) {
-          let space = document.createElement("div")
-          space.className = "d0"
-          space.id = `${w}w${h}h`
-          space.innerHTML = ""
-          space.addEventListener("click", () => {
-            if (space.className == "d1") {
-              space.className = "d0"
-            } else {
-              space.className = "d1"
-            }
-          })
-          grid.appendChild(space)
+          let space = document.createElement("div");
+          space.className = "tiles d0"; // Default to d0 (white)
+          space.id = `${w}w${h}h`;
+          grid.appendChild(space);
         }
       }
-      grid.style.gridTemplateColumns = `repeat(${x}, minmax(32px, 32px))`
-      grid.style.gridTemplateRows = `repeat(${y}, minmax(32px, 32px))`
+
+      grid.style.gridTemplateColumns = `repeat(${x}, minmax(32px, 32px))`;
+      grid.style.gridTemplateRows = `repeat(${y}, minmax(32px, 32px))`;
+
+      // Add event listener to handle clicks
+      grid.addEventListener("click", handleClick);
     }
   </script>
 </body>
