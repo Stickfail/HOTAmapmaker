@@ -17,6 +17,18 @@
       aspect-ratio: 1 / 1;
     }
 
+    .palette {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .palette-item {
+      width: 32px;
+      height: 32px;
+      margin-right: 5px;
+      cursor: pointer;
+    }
+
     .d0 {
       background-color: white;
     }
@@ -36,6 +48,10 @@
     .d4 {
       background-color: blue;
     }
+
+    .selected {
+      border: 2px solid yellow;
+    }
   </style>
 </head>
 
@@ -43,8 +59,15 @@
 
   <h1>HOTA Map Editor</h1>
 
+  <div class="palette">
+    <div class="palette-item d0" onclick="selectTile('d0')"></div>
+    <div class="palette-item d1" onclick="selectTile('d1')"></div>
+    <div class="palette-item d2" onclick="selectTile('d2')"></div>
+    <div class="palette-item d3" onclick="selectTile('d3')"></div>
+    <div class="palette-item d4" onclick="selectTile('d4')"></div>
+  </div>
+
   <button type="button" onclick="resize()">Resize</button>
-  <button type="button" onclick="setTileId()">Set Tile ID</button>
 
   <div class="grid-container" id="grid"></div>
 
@@ -55,8 +78,20 @@
   <script>
     const grid = document.getElementById("grid");
     let isDragging = false; // Track if the mouse is being dragged
+    let currentTileId = "d0"; // Default class to start with
 
-     let currentTileId = "d0"; // Default class to start with
+    // Function to select a tile from the palette
+    function selectTile(tileId) {
+      currentTileId = tileId;
+
+      // Clear previous selection
+      document.querySelectorAll('.palette-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+
+      // Add the 'selected' class to the currently selected tile
+      document.querySelector(`.palette-item.${tileId}`).classList.add('selected');
+    }
 
     // Function to change the tile's class (and color)
     function changeTileClass(tile) {
@@ -64,20 +99,25 @@
     }
 
     function finish() {
-      let final = [];
+  let final = [];
 
-      for (let h = 0; h < y; h++) {
-        let temp = [];
-        for (let w = 0; w < x; w++) {
-          let tile = document.getElementById(`${w}w${h}h`);
-          temp.push(tile.className);
-        }
-        final.push(`[${temp}]`);
-      }
-
-      final = `[${final}]`;
-      document.getElementById("printid").innerText = final;
+  for (let h = 0; h < y; h++) {
+    let temp = [];
+    for (let w = 0; w < x; w++) {
+      let tile = document.getElementById(`${w}w${h}h`);
+      let tileClass = tile.className.split(" ").pop(); // Get the tileType, e.g., "d0", "d1"
+      temp.push({
+        tileType: tileClass,
+        class: tile.className,
+        features: [] // Placeholder for future use
+      });
     }
+    final.push(temp);
+  }
+
+  document.getElementById("printid").innerText = JSON.stringify(final, null, 2); // Pretty-print the output
+}
+
 
     let x, y;
 
@@ -88,14 +128,23 @@
       }
     }
 
-    // Function to set the current tile ID (class) for future clicks
-    function setTileId() {
-      let tileId = prompt("Enter tile ID (e.g., 'd0', 'd1', 'd2', 'd3'):");
+    // Handle mouse down event to start dragging
+    function handleMouseDown(e) {
+      if (e.target.classList.contains("tiles")) {
+        isDragging = true;
+        changeTileClass(e.target); // Change the first tile
+      }
+    }
 
-      if (tileId) {
-        currentTileId = tileId; // Set the current tile ID
-      } else {
-        alert("Invalid tile ID entered.");
+    // Handle mouse up event to stop dragging
+    function handleMouseUp() {
+      isDragging = false; // Stop dragging
+    }
+
+    // Handle mouse over event to change tiles while dragging
+    function handleMouseOver(e) {
+      if (isDragging && e.target.classList.contains("tiles")) {
+        changeTileClass(e.target); // Change tiles as you drag over them
       }
     }
 
@@ -116,8 +165,16 @@
       grid.style.gridTemplateColumns = `repeat(${x}, minmax(32px, 32px))`;
       grid.style.gridTemplateRows = `repeat(${y}, minmax(32px, 32px))`;
 
-      // Add event listener to handle clicks
+      // Add event listeners for mouse events
       grid.addEventListener("click", handleClick);
+      grid.addEventListener("mousedown", handleMouseDown);
+      grid.addEventListener("mouseup", handleMouseUp);
+      grid.addEventListener("mouseover", handleMouseOver);
+    }
+
+    // Set default selected tile on page load
+    window.onload = function () {
+      selectTile('d0');
     }
   </script>
 </body>
