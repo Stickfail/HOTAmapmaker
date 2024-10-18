@@ -52,6 +52,17 @@
     .selected {
       border: 2px solid yellow;
     }
+
+    /* Tooltip for hovering */
+    /*.tiles:hover::after {
+      content: attr(class);
+      position: absolute;
+      background-color: black;
+      color: white;
+      padding: 2px;
+      border-radius: 3px;
+      font-size: 12px;
+    }*/
   </style>
 </head>
 
@@ -68,6 +79,10 @@
   </div>
 
   <button type="button" onclick="resize()">Resize</button>
+  <button type="button" onclick="saveMap()">Save Map</button>
+  <input type="file" onchange="loadMap(this)" />
+  <button type="button" onclick="undo()">Undo</button>
+  <button type="button" onclick="redo()">Redo</button>
 
   <div class="grid-container" id="grid"></div>
 
@@ -77,74 +92,97 @@
 
   <script>
     const grid = document.getElementById("grid");
-    let isDragging = false; // Track if the mouse is being dragged
-    let currentTileId = "d0"; // Default class to start with
+    let isDragging = false;
+    let currentTileId = "d0";
 
-    // Function to select a tile from the palette
+    // History array for undo/redo
+    let history = [];
+    let historyIndex = -1;
+
+    function saveState() {
+      let state = [];
+      for (let h = 0; h < y; h++) {
+        let row = [];
+        for (let w = 0; w < x; w++) {
+          let tile = document.getElementById(`${w}w${h}h`);
+          row.push(tile.className);
+        }
+        state.push(row);
+      }
+      history = history.slice(0, historyIndex + 1); // Remove future redo steps
+      history.push(state);
+      historyIndex++;
+    }
+
+    function undo() {
+      if (historyIndex > 0) {
+        historyIndex--;
+        loadState(history[historyIndex]);
+      }
+    }
+
+    function redo() {
+      if (historyIndex < history.length - 1) {
+        historyIndex++;
+        loadState(history[historyIndex]);
+      }
+    }
+
+    function loadState(state) {
+      for (let h = 0; h < y; h++) {
+        for (let w = 0; w < x; w++) {
+          document.getElementById(`${w}w${h}h`).className = state[h][w];
+        }
+      }
+    }
+
     function selectTile(tileId) {
       currentTileId = tileId;
-
-      // Clear previous selection
-      document.querySelectorAll('.palette-item').forEach(item => {
-        item.classList.remove('selected');
-      });
-
-      // Add the 'selected' class to the currently selected tile
+      document.querySelectorAll('.palette-item').forEach(item => item.classList.remove('selected'));
       document.querySelector(`.palette-item.${tileId}`).classList.add('selected');
     }
 
-    // Function to change the tile's class (and color)
     function changeTileClass(tile) {
-      tile.className = `tiles ${currentTileId}`; // Set tile to the current tile ID
+      tile.className = `tiles ${currentTileId}`;
+      saveState(); // Save every change
     }
 
     function finish() {
-  let final = [];
-
-  for (let h = 0; h < y; h++) {
-    let temp = [];
-    for (let w = 0; w < x; w++) {
-      let tile = document.getElementById(`${w}w${h}h`);
-      let tileClass = tile.className.split(" ").pop(); // Get the tileType, e.g., "d0", "d1"
-      temp.push({
-        tileType: tileClass,
-        class: tile.className,
-        features: [] // Placeholder for future use
-      });
+      let final = [];
+      for (let h = 0; h < y; h++) {
+        let temp = [];
+        for (let w = 0; w < x; w++) {
+          let tile = document.getElementById(`${w}w${h}h`);
+          temp.push(tile.className);
+        }
+        final.push(`[${temp}]`);
+      }
+      final = `[${final}]`;
+      document.getElementById("printid").innerText = final;
     }
-    final.push(temp);
-  }
-
-  document.getElementById("printid").innerText = JSON.stringify(final, null, 2); // Pretty-print the output
-}
-
 
     let x, y;
 
-    // Handle clicking to change tile class
     function handleClick(e) {
       if (e.target.classList.contains("tiles")) {
-        changeTileClass(e.target); // Change clicked tile to the selected class
+        changeTileClass(e.target);
       }
     }
 
-    // Handle mouse down event to start dragging
     function handleMouseDown(e) {
       if (e.target.classList.contains("tiles")) {
         isDragging = true;
-        changeTileClass(e.target); // Change the first tile
+        changeTileClass(e.target);
       }
     }
 
-    // Handle mouse up event to stop dragging
     function handleMouseUp() {
-      isDragging = false; // Stop dragging
+      isDragging = false;
     }
 
-    // Handle mouse over event to change tiles while dragging
     function handleMouseOver(e) {
       if (isDragging && e.target.classList.contains("tiles")) {
-        changeTileClass(e.target); // Change tiles as you drag over them
+        changeTileClass(e.target);
       }
     }
 
@@ -156,7 +194,7 @@
       for (let h = 0; h < y; h++) {
         for (let w = 0; w < x; w++) {
           let space = document.createElement("div");
-          space.className = "tiles d0"; // Default to d0 (white)
+          space.className = "tiles d0";
           space.id = `${w}w${h}h`;
           grid.appendChild(space);
         }
@@ -165,17 +203,39 @@
       grid.style.gridTemplateColumns = `repeat(${x}, minmax(32px, 32px))`;
       grid.style.gridTemplateRows = `repeat(${y}, minmax(32px, 32px))`;
 
-      // Add event listeners for mouse events
       grid.addEventListener("click", handleClick);
       grid.addEventListener("mousedown", handleMouseDown);
       grid.addEventListener("mouseup", handleMouseUp);
       grid.addEventListener("mouseover", handleMouseOver);
+
+      saveState(); // Save initial state
     }
 
-    // Set default selected tile on page load
+    function saveMap() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(history[historyIndex]));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "map.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
+
+    function loadMap(input) {
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const json = event.target.result;
+        const state = JSON.parse(json);
+        loadState(state);
+        history = [state];
+        historyIndex = 0;
+      };
+      reader.readAsText(input.files[0]);
+    }
+
     window.onload = function () {
       selectTile('d0');
-    }
+    };
   </script>
 </body>
 
